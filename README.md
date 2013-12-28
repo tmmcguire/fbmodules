@@ -7,15 +7,15 @@ FlexModule and BisonModule: create Python modules from flex-based lexical scanne
 
 28 Dec 2013 - Moved to Github and re-released for Python 2.7.4. Note that the code itself has not received any particular attention, although I have verified that it appears to work.
 
-22 Mar 2002 - Releasing  version  2.1.   Cleans  up push_position  in  FlexModule.h based on experience with APC and try to handle some weird error rule behavior by Bison.
+22 Mar 2002 - Releasing  version  2.1.   Cleans  up push_position  in  FlexModule.h based on experience with APC and try to handle some weird error rule behavior by bison.
 
 28 Jan 2002 - Releasing version  2.0.   Major  upgrade, with  complete  rewrite  of FlexModule.h.  It no longer uses C++ and has several new features including  better  position handling  and inserting sub-files into the token stream (ala C's #include).  BisonModule.h has  much  better  error  handling, using FM's positions.
 
-## RATIONALE
+## Rationale
 
-* Some people *like* using Flex and Bison.  (Yes, I pity them, too. (Actually, fooling with Flex is kind of fun, though.))
+* Some people *like* using flex and bison.  (Yes, I pity them, too. (Actually, fooling with flex is kind of fun, though.))
 
-* Flex and bison are both reasonably standard, reasonably popular, and pretty well documented.  (See O'Reilly's *lex & yacc* by John R. Levine, Tony Mason and Doug Brown (preferably the second edition, which is much improved over the first) as well as the Flex and Bison docs.)
+* Flex and bison are both reasonably standard, reasonably popular, and pretty well documented.  (See O'Reilly's *lex & yacc* by John R. Levine, Tony Mason and Doug Brown (preferably the second edition, which is much improved over the first) as well as the flex and bison docs.)
 
 * Flex and bison are pretty fast (in their own way, of course).  If more speed is needed when using both, it should be possible to merge the two modules into a single C module without changing any of the scanning or grammar rules.
 
@@ -36,11 +36,11 @@ Version numbers in italics are ridiculously out of date, but represent the last 
 
 ## Files
 
-* **BisonModule.h** C header file which should be included by a Bison grammar specification.
+* **BisonModule.h** C header file which should be included by a bison grammar specification.
 
-* **FlexModule.h** Similarly, a C header file used by a Flex scanner specification.
+* **FlexModule.h** Similarly, a C header file used by a flex scanner specification.
 
-* **Symbols.py** Sample Python code for Symbol (as in a non-terminal Bison grammar symbol) and Token classes (a subclass of Symbol, for terminal Flex symbols).
+* **Symbols.py** Sample Python code for Symbol (as in a non-terminal bison grammar symbol) and Token classes (a subclass of Symbol, for terminal flex symbols).
 
 * **example/hoc2** Example based on hoc from  *The UNIX Programming Environment* by Brian Kernighan and Rob Pike.
 
@@ -140,7 +140,7 @@ A position is a tuple of:
 
 Each call to the **readtoken** and **makesymbol** functions below should return a pair (like the **readtoken** function described above) of the integer symbol type and the symbol object. The only requirements of the object are the methods `append` (for use by the **REDUCELEFT** macro) and `insert` (for use by the **REDUCERIGHT** macro). These objects are passed around by the rules to build a parse tree, where each non-terminal symbol has a list of child symbols.
 
-The grammar file read by Bison is fairly normal, but the code associated with the rules should be fairly limited:
+The grammar file read by bison is fairly normal, but the code associated with the rules should be fairly limited:
 
 * The start rule of the grammar should, when reduced, call the **RETURNTREE** macro with the value of the top of the tree. The argument of `RETURNTREE` is the symbol object that represents the top of the parse tree. For example:
 
@@ -186,7 +186,7 @@ Like FlexModule, a BisonModule needs an array associating numeric types and stri
 
 ### Using BisonModule in Python
 
-Each Bison module exports into Python:
+Each bison module exports into Python:
 
 * **parse(makesymbol, readtoken)**
 
@@ -213,7 +213,7 @@ Each Bison module exports into Python:
 
 ## Bugs
 
-Ok, so I don’t really understand Bison error handling. If someone could explain it to me (use small words, I’m not too bright) in such a way as to improve the error handling of BisonModule, I’d appreciate it. (As of Version 2.0, I’m getting better.)
+Ok, so I don’t really understand bison error handling. If someone could explain it to me (use small words, I’m not too bright) in such a way as to improve the error handling of BisonModule, I’d appreciate it. (As of Version 2.0, I’m getting better.)
 
 Neither FlexModule nor BisonModule appears to leak memory when I have tested it, but the behavior of BisonModule when it throws a `ParserError` is not entirely well tested.
 
