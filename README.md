@@ -56,7 +56,7 @@ The two .h files are used similarly, by including them into the bison or flex in
 
 The following two sections describe how to use FlexModule from the viewpoint of the flex file (which is in C, remember) and the viewpoint of the Python user of the resulting module (i.e., in Python). The subsequent two sections describe how to use BisonModule from the viewpoint of the bison file (which is in C again) and the viewpoint of the Python user of the resulting module (i.e., in Python).
 
-### Compiling with FlexModule
+### Writing lexers with FlexModule
 
 The actual flex rules for tokens are pretty much as normal for flex; just return a unique token type integer (here, `NUMBER` is defined by the bison grammar in the normal way).
 
@@ -98,18 +98,30 @@ See *example/hoc2/hoclexer.l* for a reasonably complete example.
 
 After importing the module, it gives access to the functions:
 
-* **onstring(maketoken, string)** begin scanning string
-* **onfile(maketoken, file)** begin scanning a file (name or object)
-* **readtoken()** read the next token, returning a pair consisting of the token value and the object returned by `maketoken`.
-* **lasttoken()** re-call `maketoken` on the last token
-* **close()** free resources and stop scanning
+* **onstring(maketoken, string)** begin scanning string.
+
+* **onfile(maketoken, file)** begin scanning a file (name or object).
+
+* **readtoken()** read the next token.
+
+    The call returns a pair consisting of the token value and the object returned by `maketoken`. On the first call after the tokens are exhausted, `readtoken` returns `None`. Subsequently, it throws an exception.
+    
+* **lasttoken()** re-call `maketoken` on the last token.
+
+* **close()** free resources and stop scanning.
 
 and the dictionaries:
 
 * **names** a map between numeric types and the string names of the tokens. This is created from the `TokenValues` array.
 * **types** a map between string names and numeric types, also from `TokenValues`.
 
-**maketoken** should be a function with three parameters:
+Please note that FlexModule-based modules are not reentrant: only a single lexing context is available, and a second call to `onstring` or `onfile` resets the context used by `readtoken` and `lasttoken`. As a result, the supported usage pattern is:
+
+1. A call to `onfile(...)`.
+2. Multiple calls to `readtoken()` and `lasttoken()` until the input is exhausted.
+3. A call to `close()`.
+
+The argument **maketoken** passed to `onstring` and `onfile` should be a function with three parameters:
 
 * the type of the token, an integer
 * the text of the token, a string
@@ -122,7 +134,9 @@ A position is a tuple of:
 * the filename
 * a list of tuples, giving the file name, line, and column of stacked, yet-to-be finished positions, created by the **PUSH_FILE** macros. The list does not include the current position.
 
-### Compiling with BisonModule
+`maketoken` should return something symbolish. (See **Symbols.py**.)
+
+### Writing parsers with BisonModule
 
 Each call to the **readtoken** and **makesymbol** functions below should return a pair (like the **readtoken** function described above) of the integer symbol type and the symbol object. The only requirements of the object are the methods `append` (for use by the **REDUCELEFT** macro) and `insert` (for use by the **REDUCERIGHT** macro). These objects are passed around by the rules to build a parse tree, where each non-terminal symbol has a list of child symbols.
 
@@ -189,6 +203,13 @@ Each Bison module exports into Python:
 * **ParserError**
 
     An exception object used when the parser cannot handle a syntax error in the input. (In general, for good error handling, I am given to understand that this should not occur and thus this exception should not be thrown. It won’t be if all syntax errors are handled by error rules calling the `REDUCEERROR` macro.)
+    
+### Symbols.py
+
+**Symbols.py** includes two classes, **Symbol** and **Token**. `Symbol` can be used to represent the base class for non-terminal nodes in an abstract syntax tree while `Token`, which is a subclass of `Symbol` can be used as the base class for terminal nodes.
+
+* **Symbol** supports the `append` and `insert` methods needed by BisonModule, and
+* **Token** adds a `location` method that returns a string describing the location from which the token was parsed.
 
 ## Bugs
 
@@ -200,7 +221,7 @@ The original FlexModule used flex's C++ support to create more than one scanner 
 
 ## Further information
 
-These components were written to support the [Austin Protocol Compiler](http://www.crsr.net/Software/APC.html), and have not used much outside of it by me. If you wish to look at that for a more complete example, please remember that it *has not* been updated recently.
+These components were written to support the [Austin Protocol Compiler](http://www.crsr.net/Software/APC.html) and have not used much outside of it by me. If you wish to look at that for a more complete example, please remember that it *has not* been updated recently.
 
 Tommy M. McGuire
 
