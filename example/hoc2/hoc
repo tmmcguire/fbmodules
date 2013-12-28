@@ -34,6 +34,10 @@ sys.path.append("../..")		# To get Symbols.py...
 
 import Symbols				# ...see?
 
+# FIXME!
+# There has to be a better way.
+sys.path.append("build/lib.linux-x86_64-2.7")
+
 import hocgrammar
 import hoclexer
 
