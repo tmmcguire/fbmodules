@@ -1,0 +1,186 @@
+#!/lusr/bin/python
+#
+#  hoc -- A simple calculator and Flex/BisonModule example
+#
+#        Copyright (c) 2002 by Tommy M. McGuire
+#
+#        Permission is hereby granted, free of charge, to any person
+#        obtaining a copy of this software and associated documentation
+#        files (the "Software"), to deal in the Software without
+#        restriction, including without limitation the rights to use,
+#        copy, modify, merge, publish, distribute, sublicense, and/or
+#        sell copies of the Software, and to permit persons to whom
+#        the Software is furnished to do so, subject to the following
+#        conditions:
+#
+#        The above copyright notice and this permission notice shall be
+#        included in all copies or substantial portions of the Software.
+#
+#        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+#        KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+#        WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE
+#        AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+#        HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+#        WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+#        FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+#        OTHER DEALINGS IN THE SOFTWARE.
+#
+#	Please report any problems to mcguire@cs.utexas.edu.
+#
+#	This is version 2.0.
+
+import sys
+sys.path.append("../..")		# To get Symbols.py...
+
+import Symbols				# ...see?
+
+import hocgrammar
+import hoclexer
+
+symbolmap = {}				# Dictionary used to map symbol 
+					# types to the classes defined 
+					# below when creating symbols.
+
+memory = {}				# Dictionary used to provide the 
+					# memory for the calculator.
+
+					# Class for the LIST symbol
+					# returned by the grammar
+class List(Symbols.Symbol):
+    "LISTs of expressions"
+    def expressions(self):
+	"Return the list of expressions"
+	return self.children
+
+					# Look up the type for "LIST"
+					# in the map kindly provided
+					# by hocgrammar, and map that
+					# type to the List class.
+symbolmap[hocgrammar.types["LIST"]] = List
+
+					# Class for variable tokens
+class Variable(Symbols.Token):
+    "VAR tokens"
+    def value(self):
+	"Look up the value in memory; raise exception if needed"
+	return memory[self.string]
+    def rhs(self):
+	"This variable is on the LHS of an assignment; get the memory key"
+	return self.string
+    def __str__(self):
+	return "'%s'\n  [%s]" % (self.string, self.location())
+
+symbolmap[hoclexer.types["VAR"]] = Variable
+
+					# Finally, the class of numbers
+class Number(Symbols.Token):
+    "NUMBER tokens"
+    def value(self):
+	"Convert the scanned string to a float"
+	return float(self.string)
+    def __str__(self):
+	return "'%s'\n  [%s]" % (self.string, self.location())
+
+symbolmap[hoclexer.types["NUMBER"]] = Number
+
+					# No map entry is provided for
+					# Characters; their type will
+					# all be less than 255.
+class Character(Symbols.Token):
+    "Any other kind of token retured; single non-whitespace characters"
+    def value(self):
+	"The value is the result of the operation"
+	if self.string == "+":		# Addition
+	    return self.children[0].value() + self.children[1].value()
+	elif self.string == "*":	# Multiplication
+	    return self.children[0].value() * self.children[1].value()
+	elif self.string == "/":	# Division
+	    return self.children[0].value() / self.children[1].value()
+	elif self.string == "-":
+	    if len(self.children) > 1:	# Subtraction
+		return self.children[0].value() - self.children[1].value()
+	    else:			# Unary minus
+		return -self.children[0].value()
+	elif self.string == "=":	# Assignment
+	    val = self.children[1].value()
+	    memory[self.children[0].rhs()] = val
+	    return val
+	else:
+	    raise ValueError, "Unrecognized character token %s" % self
+    def __str__(self):
+	if self.string == "\n": self.string = "\\n"
+	return "'%s'\n  [%s]" % (self.string, self.location())
+
+					# Syntax errors will be
+					# inserted into the parse tree
+					# as instances of Error (via
+					# the symbolmap).  When an
+					# error is evaluated, throw an
+					# hocerror exception.
+class hocerror(Exception): pass
+
+					# SYNTAXERROR symbols have two
+					# children, the last token
+					# read before the error was
+					# thrown and a string
+					# possibly describing the
+					# error.
+class Error(Symbols.Symbol):
+    "A syntax error"
+    def value(self):
+	"Don't touch that; you don't know where it's been."
+	raise hocerror, "Syntax error (%s) near %s" % \
+	      (self.children[1], self.children[0])
+
+					# The type for SYNTAXERROR is
+					# predefined by BisonModule.h.
+symbolmap[hocgrammar.types["SYNTAXERROR"]] = Error
+
+					# Create a token or symbol
+					# based on the above classes
+					# and the type
+def maketoken(type, obj, loc=None):
+    if symbolmap.has_key(type):
+	return symbolmap[type](type, obj, loc)
+    elif 0 < type < 256:
+	return Character(type, obj, loc)
+    else:
+	raise ValueError, "maketoken called with unknown type %d" % type
+
+def evaluate(exprs):
+    for expr in exprs:
+	try:
+	    print expr.value()
+	except hocerror, err:
+	    print err
+
+file = sys.stdin			# Decide whether we're interactive
+interactive = 0				# or reading from a file or just
+if len(sys.argv) > 1:			# reading from stdin...
+    if sys.argv[1] == "-i":
+	interactive = 1
+    elif sys.argv[1][1] != "-":
+	file = sys.argv[1]
+    else:				# ...or just dreadfully confused
+	print "Usage: %s [-i|filename]" % sys.argv[0]
+
+if interactive:				# Read one line at a time; 
+					# more like Kernighan and Pike's hoc
+    while 1:
+	sys.stdout.write("hoc: ")
+	line = sys.stdin.readline()
+	if not line: break		# Type ctrl-d to exit
+					# Set up the scanner on the line
+        hoclexer.onstring(maketoken, line)
+					# Parse the line
+	tree = hocgrammar.parse(maketoken, hoclexer.readtoken)
+	hoclexer.close()		# Clean up the scanner
+	evaluate(tree.expressions())
+else:					# Read a list of expressions.
+    hoclexer.onfile(maketoken, file)	# Set up the scanner on the file.
+					# Note: file can be either a string
+					# file name or a file object.
+					# Parse list of expressions.
+    tree = hocgrammar.parse(maketoken, hoclexer.readtoken)
+    hoclexer.close()			# Clean up the scanner.
+    evaluate(tree.expressions())

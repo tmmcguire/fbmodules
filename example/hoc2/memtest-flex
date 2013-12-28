@@ -1,0 +1,12 @@
+import hoclexer
+
+def one(i,s,l):
+  return []
+
+for i in xrange(1,1000000):
+  hoclexer.onfile(one, "hocinput")
+  t = hoclexer.readtoken()
+  while t:
+    t = hoclexer.readtoken()
+  hoclexer.close()
+  if i % 1000 == 0: print i

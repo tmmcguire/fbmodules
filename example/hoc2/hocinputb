@@ -1,0 +1,11 @@
+8 * 40
+
+5
+
+*
+
+input "hocinputc"
+
+a = 34
+b = 12
+c = a + b * 20
